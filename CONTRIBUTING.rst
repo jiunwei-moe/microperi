@@ -22,3 +22,15 @@ Checklist
   already, add yourself to the AUTHORS file following the convention found
   therein.
 * Have fun!
+
+* Naming conventions used throughout the code:
+ * private items (or rather ones which the user should never use) take the
+   format:
+     _X_name
+   where:
+      - `X` is a character:
+        - C for classes
+        - M for (variable) class members
+        - F for functions
+        - V for variables
+      - `name` is the item name
