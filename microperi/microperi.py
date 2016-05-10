@@ -38,13 +38,13 @@ class _microbit_connection:
         self.write("")
         self.post_reset()
 
-    def handle_potential_invalid_data(data):
+    def handle_potential_invalid_data(self, data):
         # look for the word "Traceback" to see if an exception was caught
         if data[:9] == "Traceback":
             lines = data.replace("\r", "").split("\n")
             # look for the exception raised
             name = lines[-1].split(" ")[0][:-1]
-            msg = lines[-1][len(msg)+2:]
+            msg = lines[-1][len(name)+2:]
             raise Exception("%s: %s" % (name, msg))
 
     def guess_port(self):
