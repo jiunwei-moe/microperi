@@ -225,7 +225,7 @@ class _microbit_uart:
     def _unimplemented(self):
         raise Exception("The microbit.uart module is not implemented, as it will render this module useless")
 
-    def init(self, baudrate=9600, bits=8, parity=None, stop=1, *, tx=None, rx=None):
+    def init(self, baudrate=9600, bits=8, parity=None, stop=1, tx=None, rx=None):
         self._unimplemented()
 
     def any(self):
