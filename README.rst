@@ -9,7 +9,7 @@ Installation
 ===============
 1. You must first make sure you have a blank MicroPython .hex file loaded onto your Microbit. You can create one `here <https://www.microbit.co.uk/app/#create:xyelfe>`_.
 2. If using Windows, you must have the ARM mbed USB serial driver installed. It can be downloaded from `mbed site <https://developer.mbed.org/handbook/Windows-serial-configuration>`_.
-3. Install the library with:
+3. Install the library with (soon):
 
     # pip3 install microperi
 
