@@ -13,14 +13,19 @@ Installation
 
     # pip3 install microperi
 
-### Notes:
- - Some functions and parts of the current micro:bit MicroPython API are not yet
-   implemented - see the file [TODO.rst](TODO.rst) for more information.
- - If on Linux, you will need superuser priviledges to open the serial port.
+Notes:
+=======
+- Some functions and parts of the current micro:bit MicroPython API are not yet implemented - see the TODO.rst file for more information.
+- If on Linux, you will need superuser priviledges to open the serial port.
 
 Usage
 ======
+.. code-block:: python
+
     from microperi import microbit
-    while 1:
-        print("Is button A pressed? %s" % ({True:"Yes", False:"No"}[microbit.button_a.is_pressed()]))
-        microbit.sleep(1000)
+    microbit.display.scroll("Hello world")
+    if microbit.button_a.is_pressed():
+        print("Button A is pressed")
+    else:
+        print("Button A is not pressed")
+
