@@ -93,12 +93,13 @@ class _microbit_connection:
             return dataStr
         return data
 
-    def execute(self, command, strip=True, decode=True):
+    def execute(self, command, strip=True, decode=True, timeout=1):
         """
         Executes the specified command, and returns the result. `strip`
         specifies whether to strip the whole of the output, or just the
         carriage return at the very end.
         """
+        self.conn.timeout = timeout
         self.write(command)
         return self.readlines(strip, decode)
 
@@ -209,7 +210,7 @@ class _microbit_display:
         self._unimplemented()
 
     def scroll(self, string, delay=400):
-        self._ubit_conn.execute("microbit.display.scroll(\"%s\",%d)" % (string, delay))
+        self._ubit_conn.execute("microbit.display.scroll(\"%s\",%d)" % (string, delay), timeout=None)
         return None
 
 class _microbit_uart:
