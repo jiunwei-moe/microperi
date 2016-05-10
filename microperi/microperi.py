@@ -203,11 +203,19 @@ class _microbit_display:
         self._ubit_conn.execute("microbit.display.clear()")
         return None
 
-    def show(self, image):
-        self._unimplemented()
+    #def show(self, image):
+    #    self._ubit_conn.execute("microbit.display.show(")
+    #    self._unimplemented()
 
     def show(self, iterable, delay, wait=True, loop=False, clear=False):
-        self._unimplemented()
+        if isinstance(iterable, _microbit_image_class):
+            self._ubit_conn.execute("microbit.display.show(microbit.Image(\"{}\"), {}, wait={}, loop={}, clear={})".format(iterable._image_string, int(delay), bool(wait), bool(loop), bool(clear)), timeout=1)
+        elif isinstance(iterable, str):
+            self._ubit_conn.execute(
+                "microbit.display.show(\"{}\", {}, wait={}, loop={}, clear={})".format(iterable, int(delay),
+                                                                            bool(wait), bool(loop), bool(clear)), timeout=None)
+        else:
+            raise Exception("Invalid datatype being requested to be shown, only type Image or String (str) allowed!")
 
     def scroll(self, string, delay=400):
         self._ubit_conn.execute("microbit.display.scroll(\"%s\",%d)" % (string, delay), timeout=None)
