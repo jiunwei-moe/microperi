@@ -38,6 +38,15 @@ class _microbit_connection:
         self.write("")
         self.post_reset()
 
+    def handle_potential_invalid_data(data):
+        # look for the word "Traceback" to see if an exception was caught
+        if data[:9] == "Traceback":
+            lines = data.replace("\r", "").split("\n")
+            # look for the exception raised
+            name = lines[-1].split(" ")[0][:-1]
+            msg = lines[-1][len(msg)+2:]
+            raise Exception("%s: %s" % (name, msg))
+
     def guess_port(self):
         """
         From https://github.com/ntoll/microrepl
@@ -79,7 +88,8 @@ class _microbit_connection:
         dataStr = data.decode()
         if decode:
             if strip:
-                dataStr = dataStr.replace(">>>", "").strip()
+                dataStr = dataStr.replace(">>> ", "").strip()
+                self.handle_potential_invalid_data(dataStr)
             return dataStr
         return data
 
