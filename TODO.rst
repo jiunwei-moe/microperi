@@ -5,7 +5,7 @@ What's currently not implemented (i.e: the TODO list):
  - microbit.Image.ALL_CLOCKS
  - microbit.Image.ALL_ARROWS
  - microbit.display.show() functions
- - all functions in microbit.uart (see the _C_microbit_uart class below for more
+ - all functions in microbit.uart (see the _microbit_uart class below for more
    information).
  - microbit.spi.write_readinto()
  - re-importing the microbit module after a hard reset
