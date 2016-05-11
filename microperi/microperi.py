@@ -16,7 +16,9 @@ if __name__ == "__main__":
     sys.exit(1)
 
 import serial
+from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 
+basicConfig(level=WARNING)
 # classes
 class _microbit_connection:
     """
@@ -76,6 +78,7 @@ class _microbit_connection:
         Writes a string of data plus a carriage return ("\r") to the serial
         connection, after encoding it.
         """
+        debug("Sending : " + str(data + "\r"))
         self.conn.write(str(data + "\r").encode())
 
     def readlines(self, strip=True, decode=True):
@@ -83,15 +86,20 @@ class _microbit_connection:
         Continuously reads data from the serial connection until a ">>>" is
         encountered.
         """
-        self.conn.readline()
+        debug("Received : " + str(self.conn.readline()))
         data = self.conn.read_until(b">>> ")
-        dataStr = data.decode()
-        if decode:
-            if strip:
-                dataStr = dataStr.replace(">>> ", "").strip()
-                self.handle_potential_invalid_data(dataStr)
-            return dataStr
-        return data
+        try:
+            dataStr = data.decode()
+            debug("Received : " + str(dataStr))
+            if decode:
+                if strip:
+                    dataStr = dataStr.replace(">>> ", "").strip()
+                    self.handle_potential_invalid_data(dataStr)
+                return dataStr
+            return data
+        except UnicodeDecodeError:
+            # Random data received, try again to read.
+            self.readlines(strip, decode)
 
     def execute(self, command, strip=True, decode=True, timeout=1):
         """
