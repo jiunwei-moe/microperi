@@ -1,9 +1,9 @@
 ===========================
 MicroPeri for BBC Microbit
 ===========================
-MicroPeri is quick and easy to use Python 3 library for turning the BBC Microbit into an external peripheral device or sensor.
+MicroPeri is a quick and easy to use Python 3 library for turning the BBC Microbit into an external peripheral device or sensor for a normal Windows, Mac or Linux computer using MicroPython.
 
-With it, you can quickly for example read accelerator values, button presses or even write to the LED matrix!
+With it, you can quickly for example read accelerator values, button presses or even write to the LED matrix using the same API as is used with MicroPython.
 
 Installation
 ===============
