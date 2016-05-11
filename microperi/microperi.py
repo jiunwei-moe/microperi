@@ -406,7 +406,7 @@ class _microbit_compass:
         self._ubit_conn = conn
 
     def calibrate(self):
-        self._ubit_conn.execute("microbit.compass.calibrate()")
+        self._ubit_conn.execute("microbit.compass.calibrate()", timeout=None)
         return None
 
     def is_calibrated(self):
@@ -423,35 +423,35 @@ class _microbit_compass:
         return None
 
     def get_x(self):
-        s = self._ubit_conn.execute("microbit.compass.get_x()")
+        s = self._ubit_conn.execute("microbit.compass.get_x()", timeout=None)
         try:
             return int(s)
         except:
             return None
 
     def get_y(self):
-        s = self._ubit_conn.execute("microbit.compass.get_y()")
+        s = self._ubit_conn.execute("microbit.compass.get_y()", timeout=None)
         try:
             return int(s)
         except:
             return None
 
     def get_z(self):
-        s = self._ubit_conn.execute("microbit.compass.get_z()")
+        s = self._ubit_conn.execute("microbit.compass.get_z()", timeout=None)
         try:
             return int(s)
         except:
             return None
 
     def heading(self):
-        s = self._ubit_conn.execute("microbit.compass.heading()")
+        s = self._ubit_conn.execute("microbit.compass.heading()", timeout=None)
         try:
             return int(s)
         except:
             return None
 
     def get_field_strength(self):
-        s = self._ubit_conn.execute("microbit.compass.get_field_strength()")
+        s = self._ubit_conn.execute("microbit.compass.get_field_strength()", timeout=None)
         try:
             return int(s)
         except:
@@ -741,7 +741,7 @@ class _microbit:
 
     def sleep(self, n):
         # NOTE: this could use time.sleep instead
-        self._ubit_conn.execute("microbit.sleep(%d)" % (n))
+        self._ubit_conn.execute("microbit.sleep(%d)" % (n), timeout=(n /1000) + 0.5)
         return None
 
     def running_time(self):
