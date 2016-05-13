@@ -18,19 +18,9 @@ Checklist
 +++++++++
 
 * Your code should be commented in *plain English* (British spelling).
+* Code styling should follow the current code, e.g: `microperi.py`, and where
+  not specified should follow [PEP8](https://www.python.org/dev/peps/pep-0008/).
 * If your contribution is for a major block of work and you've not done so
   already, add yourself to the AUTHORS file following the convention found
   therein.
 * Have fun!
-
-* Naming conventions used throughout the code:
- * private items (or rather ones which the user should never use) take the
-   format:
-     _X_name
-   where:
-      - `X` is a character:
-        - C for classes
-        - M for (variable) class members
-        - F for functions
-        - V for variables
-      - `name` is the item name

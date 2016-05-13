@@ -22,10 +22,14 @@ Usage
 ======
 .. code-block:: python
 
-    from microperi import microbit
+    import microperi
+    # try to find the micro:bit automatically
+    microbit = microperi.Microbit()
     microbit.display.scroll("Hello world")
-    if microbit.button_a.is_pressed():
-        print("Button A is pressed")
-    else:
-        print("Button A is not pressed")
-
+    while True:
+        # is button A currently being pressed?
+        if microbit.button_a.is_pressed():
+            print("Button A is pressed")
+        else:
+            print("Button A is not pressed")
+        microbit.sleep(500)

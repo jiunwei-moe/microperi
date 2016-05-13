@@ -19,6 +19,106 @@ import serial
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 
 basicConfig(level=WARNING)
+
+# the microbit DAL's pentolino font
+_microbit_font_pendolino3 = {
+    " ": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+    "!": [[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,0,0,0,0],[0,9,0,0,0]],
+    "\"": [[0,9,0,9,0],[0,9,0,9,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+    "#": [[0,9,0,9,0],[9,9,9,9,9],[0,9,0,9,0],[9,9,9,9,9],[0,9,0,9,0]],
+    "$": [[0,9,9,9,0],[9,9,0,0,9],[0,9,9,9,0],[9,0,0,9,9],[0,9,9,9,0]],
+    "%": [[9,9,0,0,9],[9,0,0,9,0],[0,0,9,0,0],[0,9,0,0,9],[9,0,0,9,9]],
+    "&": [[0,9,9,0,0],[9,0,0,9,0],[0,9,9,0,0],[9,0,0,9,0],[0,9,9,0,9]],
+    "'": [[0,9,0,0,0],[0,9,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+    "(": [[0,0,9,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,0,9,0,0]],
+    ")": [[0,9,0,0,0],[0,0,9,0,0],[0,0,9,0,0],[0,0,9,0,0],[0,9,0,0,0]],
+    "*": [[0,0,0,0,0],[0,9,0,9,0],[0,0,9,0,0],[0,9,0,9,0],[0,0,0,0,0]],
+    "+": [[0,0,0,0,0],[0,0,9,0,0],[0,9,9,9,0],[0,0,9,0,0],[0,0,0,0,0]],
+    ",": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,9,0,0],[0,9,0,0,0]],
+    "-": [[0,0,0,0,0],[0,0,0,0,0],[0,9,9,9,0],[0,0,0,0,0],[0,0,0,0,0]],
+    ".": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,9,0,0,0],[0,0,0,0,0]],
+    "/": [[0,0,0,0,9],[0,0,0,9,0],[0,0,9,0,0],[0,9,0,0,0],[9,0,0,0,0]],
+    "0": [[0,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0]],
+    "9": [[0,0,9,0,0],[0,9,9,0,0],[0,0,9,0,0],[0,0,9,0,0],[0,9,9,9,0]],
+    "2": [[9,9,9,0,0],[0,0,0,9,0],[0,9,9,0,0],[9,0,0,0,0],[9,9,9,9,0]],
+    "3": [[9,9,9,9,0],[0,0,0,9,0],[0,0,9,0,0],[9,0,0,9,0],[0,9,9,0,0]],
+    "4": [[0,0,9,9,0],[0,9,0,9,0],[9,0,0,9,0],[9,9,9,9,9],[0,0,0,9,0]],
+    "5": [[9,9,9,9,9],[9,0,0,0,0],[9,9,9,9,0],[0,0,0,0,9],[9,9,9,9,0]],
+    "6": [[0,0,0,9,0],[0,0,9,0,0],[0,9,9,9,0],[9,0,0,0,9],[0,9,9,9,0]],
+    "7": [[9,9,9,9,9],[0,0,0,9,0],[0,0,9,0,0],[0,9,0,0,0],[9,0,0,0,0]],
+    "8": [[0,9,9,9,0],[9,0,0,0,9],[0,9,9,9,0],[9,0,0,0,9],[0,9,9,9,0]],
+    "9": [[0,9,9,9,0],[9,0,0,0,9],[0,9,9,9,0],[0,0,9,0,0],[0,9,0,0,0]],
+    ":": [[0,0,0,0,0],[0,9,0,0,0],[0,0,0,0,0],[0,9,0,0,0],[0,0,0,0,0]],
+    ";": [[0,0,0,0,0],[0,0,9,0,0],[0,0,0,0,0],[0,0,9,0,0],[0,9,0,0,0]],
+    "<": [[0,0,0,9,0],[0,0,9,0,0],[0,9,0,0,0],[0,0,9,0,0],[0,0,0,9,0]],
+    "=": [[0,0,0,0,0],[0,9,9,9,0],[0,0,0,0,0],[0,9,9,9,0],[0,0,0,0,0]],
+    ">": [[0,9,0,0,0],[0,0,9,0,0],[0,0,0,9,0],[0,0,9,0,0],[0,9,0,0,0]],
+    "?": [[0,9,9,9,0],[9,0,0,0,9],[0,0,9,9,0],[0,0,0,0,0],[0,0,9,0,0]],
+    "@": [[0,9,9,9,0],[9,0,0,0,9],[9,0,9,0,9],[9,0,0,9,9],[0,9,9,0,0]],
+    "A": [[0,9,9,0,0],[9,0,0,9,0],[9,9,9,9,0],[9,0,0,9,0],[9,0,0,9,0]],
+    "B": [[9,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0]],
+    "C": [[0,9,9,9,0],[9,0,0,0,0],[9,0,0,0,0],[9,0,0,0,0],[0,9,9,9,0]],
+    "D": [[9,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0],[9,9,9,0,0]],
+    "E": [[9,9,9,9,0],[9,0,0,0,0],[9,9,9,0,0],[9,0,0,0,0],[9,9,9,9,0]],
+    "F": [[9,9,9,9,0],[9,0,0,0,0],[9,9,9,0,0],[9,0,0,0,0],[9,0,0,0,0]],
+    "G": [[0,9,9,9,0],[9,0,0,0,0],[9,0,0,9,9],[9,0,0,0,9],[0,9,9,9,0]],
+    "H": [[9,0,0,9,0],[9,0,0,9,0],[9,9,9,9,0],[9,0,0,9,0],[9,0,0,9,0]],
+    "I": [[9,9,9,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[9,9,9,0,0]],
+    "J": [[9,9,9,9,9],[0,0,0,9,0],[0,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0]],
+    "K": [[9,0,0,9,0],[9,0,9,0,0],[9,9,0,0,0],[9,0,9,0,0],[9,0,0,9,0]],
+    "L": [[9,0,0,0,0],[9,0,0,0,0],[9,0,0,0,0],[9,0,0,0,0],[9,9,9,9,0]],
+    "M": [[9,0,0,0,9],[9,9,0,9,9],[9,0,9,0,9],[9,0,0,0,9],[9,0,0,0,9]],
+    "N": [[9,0,0,0,9],[9,9,0,0,9],[9,0,9,0,9],[9,0,0,9,9],[9,0,0,0,9]],
+    "O": [[0,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0]],
+    "P": [[9,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0],[9,0,0,0,0],[9,0,0,0,0]],
+    "Q": [[0,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0],[0,0,9,9,0]],
+    "R": [[9,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0],[9,0,0,9,0],[9,0,0,0,9]],
+    "S": [[0,9,9,9,0],[9,0,0,0,0],[0,9,9,0,0],[0,0,0,9,0],[9,9,9,0,0]],
+    "T": [[9,9,9,9,9],[0,0,9,0,0],[0,0,9,0,0],[0,0,9,0,0],[0,0,9,0,0]],
+    "U": [[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0]],
+    "V": [[9,0,0,0,9],[9,0,0,0,9],[9,0,0,0,9],[0,9,0,9,0],[0,0,9,0,0]],
+    "W": [[9,0,0,0,9],[9,0,0,0,9],[9,0,9,0,9],[9,9,0,9,9],[9,0,0,0,9]],
+    "X": [[9,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0]],
+    "Y": [[9,0,0,0,9],[0,9,0,9,0],[0,0,9,0,0],[0,0,9,0,0],[0,0,9,0,0]],
+    "Z": [[9,9,9,9,0],[0,0,9,0,0],[0,9,0,0,0],[9,0,0,0,0],[9,9,9,9,0]],
+    "[": [[0,9,9,9,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,9,9,0]],
+    "\\": [[9,0,0,0,0],[0,9,0,0,0],[0,0,9,0,0],[0,0,0,9,0],[0,0,0,0,9]],
+    "]": [[0,9,9,9,0],[0,0,0,9,0],[0,0,0,9,0],[0,0,0,9,0],[0,9,9,9,0]],
+    "^": [[0,0,9,0,0],[0,9,0,9,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+    "_": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[9,9,9,9,9]],
+    "`": [[0,9,0,0,0],[0,0,9,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+    "a": [[0,0,0,0,0],[0,9,9,9,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,9,9]],
+    "b": [[9,0,0,0,0],[9,0,0,0,0],[9,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0]],
+    "c": [[0,0,0,0,0],[0,9,9,9,0],[9,0,0,0,0],[9,0,0,0,0],[0,9,9,9,0]],
+    "d": [[0,0,0,9,0],[0,0,0,9,0],[0,9,9,9,0],[9,0,0,9,0],[0,9,9,9,0]],
+    "e": [[0,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0],[9,0,0,0,0],[0,9,9,9,0]],
+    "f": [[0,0,9,9,0],[0,9,0,0,0],[9,9,9,0,0],[0,9,0,0,0],[0,9,0,0,0]],
+    "g": [[0,9,9,9,0],[9,0,0,9,0],[0,9,9,9,0],[0,0,0,9,0],[0,9,9,0,0]],
+    "h": [[9,0,0,0,0],[9,0,0,0,0],[9,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0]],
+    "i": [[0,9,0,0,0],[0,0,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0]],
+    "j": [[0,0,0,9,0],[0,0,0,0,0],[0,0,0,9,0],[0,0,0,9,0],[0,9,9,0,0]],
+    "k": [[9,0,0,0,0],[9,0,9,0,0],[9,9,0,0,0],[9,0,9,0,0],[9,0,0,9,0]],
+    "l": [[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,0,9,9,0]],
+    "m": [[0,0,0,0,0],[9,9,0,9,9],[9,0,9,0,9],[9,0,0,0,9],[9,0,0,0,9]],
+    "n": [[0,0,0,0,0],[9,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0]],
+    "o": [[0,0,0,0,0],[0,9,9,0,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,0,0]],
+    "p": [[0,0,0,0,0],[9,9,9,0,0],[9,0,0,9,0],[9,9,9,0,0],[9,0,0,0,0]],
+    "q": [[0,0,0,0,0],[0,9,9,9,0],[9,0,0,9,0],[0,9,9,9,0],[0,0,0,9,0]],
+    "r": [[0,0,0,0,0],[0,9,9,9,0],[9,0,0,0,0],[9,0,0,0,0],[9,0,0,0,0]],
+    "s": [[0,0,0,0,0],[0,0,9,9,0],[0,9,0,0,0],[0,0,9,0,0],[9,9,0,0,0]],
+    "t": [[0,9,0,0,0],[0,9,0,0,0],[0,9,9,9,0],[0,9,0,0,0],[0,0,9,9,9]],
+    "u": [[0,0,0,0,0],[9,0,0,9,0],[9,0,0,9,0],[9,0,0,9,0],[0,9,9,9,9]],
+    "v": [[0,0,0,0,0],[9,0,0,0,9],[9,0,0,0,9],[0,9,0,9,0],[0,0,9,0,0]],
+    "w": [[0,0,0,0,0],[9,0,0,0,9],[9,0,0,0,9],[9,0,9,0,9],[9,9,0,9,9]],
+    "x": [[0,0,0,0,0],[9,0,0,9,0],[0,9,9,0,0],[0,9,9,0,0],[9,0,0,9,0]],
+    "y": [[0,0,0,0,0],[9,0,0,0,9],[0,9,0,9,0],[0,0,9,0,0],[9,9,0,0,0]],
+    "z": [[0,0,0,0,0],[9,9,9,9,0],[0,0,9,0,0],[0,9,0,0,0],[9,9,9,9,0]],
+    "{": [[0,0,9,9,0],[0,0,9,0,0],[0,9,9,0,0],[0,0,9,0,0],[0,0,9,9,0]],
+    "|": [[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0]],
+    "}": [[9,9,0,0,0],[0,9,0,0,0],[0,9,9,0,0],[0,9,0,0,0],[9,9,0,0,0]],
+    "~": [[0,0,0,0,0],[0,0,0,0,0],[0,9,9,0,0],[0,0,0,9,9],[0,0,0,0,0]]
+}
+
 # classes
 class _microbit_connection:
     """
@@ -27,14 +127,15 @@ class _microbit_connection:
     """
     conn = None
 
-    def __init__(self):
+    def __init__(self, port=None):
         """
         Constructor. Attempts to find the micro:bit, and raises an Exception
         if one can't be found.
         """
-        port = self.guess_port()
-        if port is None:
-            raise Exception("Could not find micro:bit!")
+        if port is None or not isinstance(port, str):
+            port = self.guess_port()
+            if port is None:
+                raise Exception("Could not find micro:bit!")
 
         self.conn = serial.Serial(port, 115200, timeout=1)
         self.write("")
@@ -47,7 +148,7 @@ class _microbit_connection:
             # look for the exception raised
             name = lines[-1].split(" ")[0][:-1]
             msg = lines[-1][len(name)+2:]
-            raise Exception("%s: %s" % (name, msg))
+            raise Exception("\n\n    the micro:bit threw the following exception:\n    [%s: %s]\n" % (name, msg))
 
     def guess_port(self):
         """
@@ -130,31 +231,75 @@ class _microbit_image_class:
     "Image('99000:99099:09090:09990:00000:')"
 
     """
-    _image_string = None
+    _img_array_buffer = None
     _img_width = None
     _img_height = None
-    _img_buffer = None
     _is_string = False
     _is_readonly = False
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        data = self._img_array_buffer
+        s = ""
+        for row in data:
+            s += "%d%d%d%d%d:" % (row[0], row[1], row[2], row[3], row[4])
+        return "Image('%s')" % (s)
 
     def __init__(self, string=None, width=None, height=None, buffer=None,
                  _microrepl_isreadonly=False):
         if string is not None:
             self._is_string = True
             if isinstance(string, _microbit_image_class):
-                string = string._image_string
-            string.replace("\n", ":")
-            self._image_string = string
-            self._img_width = 5
-            self._img_height = 5
+                self._img_array_buffer = string._img_array_buffer
+            else:
+                if len(string) > 1:
+                    self._img_from_string(string.replace("\n", ":").replace(" ", "0"))
+                else:
+                    if len(string) <= 0:
+                        raise Exception("No data provided for image!")
+                    c = string[0]
+                    if not c in _microbit_font_pendolino3:
+                        raise Exception("Unsupported character")
+                    self._img_array_buffer = _microbit_font_pendolino3[c]
+                    self._img_width = 5
+                    self._img_height = 5
         else:
             self._img_width = width
             self._img_height = height
             if buffer is not None:
-                self._image_string = buffer
+                l = len(buffer)
+                if l != width * height:
+                    raise Exception("Invalid data provided for image (either too much or too little)")
+                image_data = []
+                for i in range(height):
+                    row_data = buffer[width * i : width * (i + 1) - 1]
+                    image_data.append(row_data)
+                self._img_array_buffer = image_data
             else:
-                self._image_string = "00000:00000:00000:00000:00000"
+                self._img_array_buffer = _microbit_font_pendolino3[0]
         _is_readonly = _microrepl_isreadonly
+
+    def _img_from_string(self, string):
+        rows = string.split(":")
+        if len(rows) <= 0:
+            raise Exception("No data provided for image!")
+        l = len(rows[0])
+        image_data = []
+        for row in rows:
+            row_data = []
+            if len(row) != l:
+                raise Exception("Invalid image: not all the rows are the same length!")
+            for char in row:
+                c = ord(char)
+                if c < ord("0") or c > ord("9"):
+                    raise Exception("Invalid image: only the characters 0-9 are allowed")
+                row_data.append(c)
+            image_data.append(row_data)
+        self._img_array_buffer = image_data
+        self._img_height = len(rows)
+        self._img_width = l
 
     def _is_out_of_bounds(self, x, y):
         if x + y * (self._img_height - 1) > self._img_width * self._img_height - 1 or \
@@ -174,15 +319,61 @@ class _microbit_image_class:
             raise Exception("You cannot modify read-only images!")
         if self._is_out_of_bounds(x, y):
             raise Exception("Specified index is out of bounds!")
-        index = x + y * (self._img_height)
-        self._image_string = self._image_string[:index-1] + str(value) + \
-            self._image_string[:index+1]
+        if value < 0 or value > 9:
+            raise Exception("Invalid pixel brightness value")
+        self._img_array_buffer[y][x] = value
         return None
 
     def get_pixel(self, x, y):
         if self._is_out_of_bounds(x, y):
             raise Exception("Specified index is out of bounds!")
-        return int(self._image_string[x + y * (self._img_height)])
+        return self._img_array_buffer[x + y * self._img_height]
+
+    def shift_left(self, n):
+        for _ in range(n):
+            buf = self._img_array_buffer
+            column0 = []
+            for i in range(self._img_width):
+                column0.append(buf[i][0])
+            for y in range(self._img_height):
+                for x in range(self._img_width - 1):
+                    buf[y][x] = buf[y][x + 1]
+            for i in range(self._img_width):
+                buf[i][self._img_width - 1] = column0[i]
+            self._img_array_buffer = buf
+        return None
+
+    def shift_right(self, n):
+        for _ in range(n):
+            buf = self._img_array_buffer
+            column4 = []
+            for i in range(self._img_width - 1, 0):
+                column4.append(buf[i][self._img_width - 1])
+            for y in range(self._img_height):
+                for x in range(self._img_width - 1, 0):
+                    buf[y][x] = buf[y][x - 1]
+            for i in range(self._img_width):
+                buf[i][0] = column4[i]
+            self._img_array_buffer = buf
+        return None
+
+    def shift_up(self, n):
+        for _ in range(n):
+            buf = self._img_array_buffer
+            row = buf[0]
+            for y in range(self._img_height - 1):
+                buf[y] = buf[y + 1]
+            self._img_array_buffer = buf
+        return None
+
+    def shift_down(self, n):
+        for _ in range(n):
+            buf = self._img_array_buffer
+            row = buf[0]
+            for y in range(self._img_height - 1, 0):
+                buf[y] = buf[y - 1]
+            self._img_array_buffer = buf
+        return None
 
 class _microbit_display:
     """
@@ -215,13 +406,13 @@ class _microbit_display:
     #    self._ubit_conn.execute("microbit.display.show(")
     #    self._unimplemented()
 
-    def show(self, iterable, delay, wait=True, loop=False, clear=False):
+    def show(self, iterable, delay=1000, *, wait=True, loop=False, clear=False):
         if isinstance(iterable, _microbit_image_class):
-            self._ubit_conn.execute("microbit.display.show(microbit.Image(\"{}\"), {}, wait={}, loop={}, clear={})".format(iterable._image_string, int(delay), bool(wait), bool(loop), bool(clear)), timeout=1)
+            self._ubit_conn.execute("microbit.display.show(microbit.%s)" % \
+                (repr(iterable)), timeout=1)
         elif isinstance(iterable, str):
-            self._ubit_conn.execute(
-                "microbit.display.show(\"{}\", {}, wait={}, loop={}, clear={})".format(iterable, int(delay),
-                                                                            bool(wait), bool(loop), bool(clear)), timeout=None)
+            self._ubit_conn.execute( "microbit.display.show(\"%s\",%d,wait=%s,loop=%s,clear=%s)" % \
+                (iterable, delay, wait, loop, clear))
         else:
             raise Exception("Invalid datatype being requested to be shown, only type Image or String (str) allowed!")
 
@@ -699,8 +890,8 @@ class _microbit:
 
     # functions
     # constructor
-    def __init__(self):
-        self._ubit_conn = _microbit_connection()
+    def __init__(self, port_addr=None):
+        self._ubit_conn = _microbit_connection(port_addr)
 
         self.button_a = self.Button(self._ubit_conn, "button_a")
         self.button_b = self.Button(self._ubit_conn, "button_b")
@@ -737,6 +928,8 @@ class _microbit:
         self.accelerometer = _microbit_accelerometer(self._ubit_conn)
         self.compass = _microbit_compass(self._ubit_conn)
 
+        self.reset()
+
     def panic(self, n):
         self._ubit_conn.execute("microbit.panic(%d)" % (n))
         self._ubit_conn.post_reset()
@@ -766,5 +959,4 @@ class _microbit:
         except:
             return None
 
-microbit = _microbit()
-microbit.reset()
+Microbit = _microbit
