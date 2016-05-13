@@ -20,7 +20,7 @@ from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 
 basicConfig(level=WARNING)
 
-# the microbit DAL's pentolino font
+# the microbit DAL's pentolino font character map lookup dict
 _microbit_font_pendolino3 = {
     " ": [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
     "!": [[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,0,0,0,0],[0,9,0,0,0]],
@@ -119,6 +119,73 @@ _microbit_font_pendolino3 = {
     "~": [[0,0,0,0,0],[0,0,0,0,0],[0,9,9,0,0],[0,0,0,9,9],[0,0,0,0,0]]
 }
 
+# exception lookup dict
+_exceptions_lookup_dict = {
+    "BaseException": BaseException,
+    "SystemExit": SystemExit,
+    "KeyboardInterrupt": KeyboardInterrupt,
+    "GeneratorExit": GeneratorExit,
+    "Exception": Exception,
+    "StopIteration": StopIteration,
+    "StopAsyncIteration": StopAsyncIteration,
+    "ArithmeticError": ArithmeticError,
+    "FloatingPointError": FloatingPointError,
+    "OverflowError": OverflowError,
+    "ZeroDivisionError": ZeroDivisionError,
+    "AssertionError": AssertionError,
+    "AttributeError": AttributeError,
+    "BufferError": BufferError,
+    "EOFError": EOFError,
+    "ImportError": ImportError,
+    "LookupError": LookupError,
+    "IndexError": IndexError,
+    "KeyError": KeyError,
+    "MemoryError": MemoryError,
+    "NameError": NameError,
+    "UnboundLocalError": UnboundLocalError,
+    "OSError": OSError,
+    "BlockingIOError": BlockingIOError,
+    "ChildProcessError": ChildProcessError,
+    "ConnectionError": ConnectionError,
+    "BrokenPipeError": BrokenPipeError,
+    "ConnectionAbortedError": ConnectionAbortedError,
+    "ConnectionRefusedError": ConnectionRefusedError,
+    "ConnectionResetError": ConnectionResetError,
+    "FileExistsError": FileExistsError,
+    "FileNotFoundError": FileNotFoundError,
+    "InterruptedError": InterruptedError,
+    "IsADirectoryError": IsADirectoryError,
+    "NotADirectoryError": NotADirectoryError,
+    "PermissionError": PermissionError,
+    "ProcessLookupError": ProcessLookupError,
+    "TimeoutError": TimeoutError,
+    "ReferenceError": ReferenceError,
+    "RuntimeError": RuntimeError,
+    "NotImplementedError": NotImplementedError,
+    "RecursionError": RecursionError,
+    "SyntaxError": SyntaxError,
+    "IndentationError": IndentationError,
+    "TabError": TabError,
+    "SystemError": SystemError,
+    "TypeError": TypeError,
+    "ValueError": ValueError,
+    "UnicodeError": UnicodeError,
+    "UnicodeDecodeError": UnicodeDecodeError,
+    "UnicodeEncodeError": UnicodeEncodeError,
+    "UnicodeTranslateError": UnicodeTranslateError,
+    "Warning": Warning,
+    "DeprecationWarning": DeprecationWarning,
+    "PendingDeprecationWarning": PendingDeprecationWarning,
+    "RuntimeWarning": RuntimeWarning,
+    "SyntaxWarning": SyntaxWarning,
+    "UserWarning": UserWarning,
+    "FutureWarning": FutureWarning,
+    "ImportWarning": ImportWarning,
+    "UnicodeWarning": UnicodeWarning,
+    "BytesWarning": BytesWarning,
+    "ResourceWarning": ResourceWarning
+}
+
 # classes
 class _microbit_connection:
     """
@@ -148,6 +215,8 @@ class _microbit_connection:
             # look for the exception raised
             name = lines[-1].split(" ")[0][:-1]
             msg = lines[-1][len(name)+2:]
+            if name in _exceptions_lookup_dict:
+                raise _exceptions_lookup_dict[name](msg)
             raise Exception("\n\n    the micro:bit threw the following exception:\n    [%s: %s]\n" % (name, msg))
 
     def guess_port(self):
