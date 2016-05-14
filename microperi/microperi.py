@@ -314,12 +314,15 @@ class _microbit_image_class:
     _is_readonly = False
 
     def __str__(self):
-        return self.__repr__()
+        s = ""
+        for row in self._img_array_buffer:
+            s += "%d%d%d%d%d:" % (row[0], row[1], row[2], row[3], row[4])
+        return "Image(\n    '%s:'\n    '%s:'\n    '%s:'\n    '%s:'\n    '%s:'\n)" % \
+            (s[0], s[1], s[2], s[3], s[4])
 
     def __repr__(self):
-        data = self._img_array_buffer
         s = ""
-        for row in data:
+        for row in self._img_array_buffer:
             s += "%d%d%d%d%d:" % (row[0], row[1], row[2], row[3], row[4])
         return "Image('%s')" % (s)
 
