@@ -209,15 +209,22 @@ class _microbit_connection:
         self.post_reset()
 
     def handle_potential_invalid_data(self, data):
-        # look for the word "Traceback" to see if an exception was caught
-        if data[:9] == "Traceback":
-            lines = data.replace("\r", "").split("\n")
-            # look for the exception raised
-            name = lines[-1].split(" ")[0][:-1]
-            msg = lines[-1][len(name)+2:]
-            if name in _exceptions_lookup_dict:
-                raise _exceptions_lookup_dict[name](msg)
-            raise Exception("\n\n    the micro:bit threw the following exception:\n    [%s: %s]\n" % (name, msg))
+        """
+        Routine which looks for the "Traceback" string at the start of every
+        line of output, in case an exception was raised by the micro:bit.
+        """
+        lines = data.replace("\r", "").strip().split("\n")
+        if len(lines) <= 0:
+            return
+        for x in range(len(lines) - 1):
+            if lines[x][:9] == "Traceback":
+                # look for the exception raised. this is going to be on the very
+                # last line.
+                name = lines[-1].split(" ")[0][:-1]
+                msg = lines[-1][len(name)+2:]
+                if name in _exceptions_lookup_dict:
+                    raise _exceptions_lookup_dict[name](msg)
+                raise Exception("\n\n    the micro:bit threw the following exception:\n    [%s: %s]\n" % (name, msg))
 
     def guess_port(self):
         """
