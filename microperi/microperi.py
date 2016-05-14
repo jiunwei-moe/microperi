@@ -6,9 +6,11 @@
 # MicroPeri is a library for using the BBC Microbit with MicroPython as an
 # external peripheral device or sensor.
 
+import sys
+import os
+
 if __name__ == "__main__":
     # this shouldn't be run as a file
-    import os, sys
     name = os.path.basename(__file__)
     if name[-3:] == ".py":
         name = name[:-3]
@@ -197,15 +199,41 @@ class _microbit_connection:
     def __init__(self, port=None):
         """
         Constructor. Attempts to find the micro:bit, and raises an Exception
-        if one can't be found.
+        if one can't be found. If one is found, but there is an error connecting
+        to it, depending on the error (and platform), microperi may output a
+        message to stderr, and then raise an exception.
         """
         if port is None or not isinstance(port, str):
             port = self.guess_port()
             if port is None:
                 raise Exception("Could not find micro:bit!")
-
-        self.conn = serial.Serial(port, 115200, timeout=1)
-        self.write("")
+        try:
+            self.conn = serial.Serial(port, 115200, timeout=1)
+        except serial.SerialException as e:
+            # NOTE: we could simple exit here instead of raising the exception
+            # again, but the underlying script using this module might have
+            # something to do (however the exception tracebacks are very large,
+            # and the message probably won't be seen).
+            if e.errno == 13:
+                # possible invalid priviledges for the current user?
+                print("\nmicro:bit located, but permission to connect to it was denied.", file=sys.stderr)
+                if sys.platform.startswith("linux"):
+                    import pwd
+                    print("Perhaps your user account does not have sufficient privileges to open the serial connection? Try running the command:", file=sys.stderr)
+                    print("    sudo usermod -a -G dialout %s" % (pwd.getpwuid(os.getuid()).pw_name), file=sys.stderr)
+                    print("Log out, log back in, and see if that works.\n", file=sys.stderr)
+                else:
+                    print("")
+                raise e
+            elif e.errno == 16:
+                # device busy
+                print("\nmicro:bit located, but it seems to be busy. This can happen if another program is attempting to communicate with it at the same time.", file=sys.stderr)
+                print("Wait up to 20 seconds, then try again. If that doesn't work, attempt a hard-reset of the device by pressing the reset button on the back of the board. If that doesn't work, then try a reboot.\n", file=sys.stderr)
+                raise e
+            else:
+                raise e
+        # perform a soft reset to make sure that we have a clean environment
+        self.execute("\x04")
         self.post_reset()
 
     def handle_potential_invalid_data(self, data):
@@ -232,7 +260,6 @@ class _microbit_connection:
         Returns the port for the first micro:bit found connected to the computer
         running this script. If no micro:bit is found, returns None.
         """
-        import sys
         from serial.tools.list_ports import comports as list_serial_ports
         ports = list_serial_ports()
         platform = sys.platform
