@@ -17,7 +17,12 @@ if __name__ == "__main__":
     print("Use me as a module:\n    from %s import microbit" % (name))
     sys.exit(1)
 
-import serial
+try:
+    # attempt to find the builtin pyserial module first
+    os.sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    import _portable_serial as serial
+except:
+    import serial
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 
 basicConfig(level=WARNING)
@@ -234,6 +239,7 @@ class _microbit_connection:
                 raise e
         # perform a soft reset to make sure that we have a clean environment
         self.execute("\x04")
+        self.execute("\x03")
         self.post_reset()
 
     def handle_potential_invalid_data(self, data):
