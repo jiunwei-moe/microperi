@@ -347,10 +347,10 @@ class _microbit_image_class:
     _is_readonly = False
 
     def __str__(self):
-        s = ""
+        s = []
         for row in self._img_array_buffer:
-            s += "%d%d%d%d%d:" % (row[0], row[1], row[2], row[3], row[4])
-        return "Image(\n    '%s:'\n    '%s:'\n    '%s:'\n    '%s:'\n    '%s:'\n)" % \
+            s.append("%d%d%d%d%d:" % (row[0], row[1], row[2], row[3], row[4]))
+        return "Image(\n    '%s'\n    '%s'\n    '%s'\n    '%s'\n    '%s'\n)" % \
             (s[0], s[1], s[2], s[3], s[4])
 
     def __repr__(self):
@@ -407,7 +407,7 @@ class _microbit_image_class:
                 c = ord(char)
                 if c < ord("0") or c > ord("9"):
                     raise Exception("Invalid image: only the characters 0-9 are allowed")
-                row_data.append(c)
+                row_data.append(int(char))
             image_data.append(row_data)
         self._img_array_buffer = image_data
         self._img_height = len(rows)
@@ -513,10 +513,6 @@ class _microbit_display:
     def clear(self):
         self._ubit_conn.execute("microbit.display.clear()")
         return None
-
-    #def show(self, image):
-    #    self._ubit_conn.execute("microbit.display.show(")
-    #    self._unimplemented()
 
     def show(self, iterable, delay=1000, *, wait=True, loop=False, clear=False):
         if isinstance(iterable, _microbit_image_class):
