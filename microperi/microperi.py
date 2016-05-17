@@ -127,14 +127,16 @@ _microbit_font_pendolino3 = {
 }
 
 # exception lookup dict
+# exception lookup dict
 _exceptions_lookup_dict = {
+"""
     "BaseException": BaseException,
     "SystemExit": SystemExit,
     "KeyboardInterrupt": KeyboardInterrupt,
     "GeneratorExit": GeneratorExit,
     "Exception": Exception,
     "StopIteration": StopIteration,
-    "StopAsyncIteration": StopAsyncIteration,
+    "StopAsyncIteration": Exception,
     "ArithmeticError": ArithmeticError,
     "FloatingPointError": FloatingPointError,
     "OverflowError": OverflowError,
@@ -169,7 +171,7 @@ _exceptions_lookup_dict = {
     "ReferenceError": ReferenceError,
     "RuntimeError": RuntimeError,
     "NotImplementedError": NotImplementedError,
-    "RecursionError": RecursionError,
+    "RecursionError": Exception,
     "SyntaxError": SyntaxError,
     "IndentationError": IndentationError,
     "TabError": TabError,
@@ -191,7 +193,12 @@ _exceptions_lookup_dict = {
     "UnicodeWarning": UnicodeWarning,
     "BytesWarning": BytesWarning,
     "ResourceWarning": ResourceWarning
+    """
 }
+
+if sys.version_info >= (3, 5):
+    _exceptions_lookup_dict["StopAsyncIteration"] = StopAsyncIteration
+    _exceptions_lookup_dict["RecursionError"] = RecursionError
 
 # classes
 class _microbit_connection:
