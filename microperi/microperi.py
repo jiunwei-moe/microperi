@@ -123,79 +123,6 @@ _microbit_font_pendolino3 = {
     "~": [[0,0,0,0,0],[0,0,0,0,0],[0,9,9,0,0],[0,0,0,9,9],[0,0,0,0,0]]
 }
 
-# exception lookup dict
-_exceptions_lookup_dict = {
-"""
-    "BaseException": BaseException,
-    "SystemExit": SystemExit,
-    "KeyboardInterrupt": KeyboardInterrupt,
-    "GeneratorExit": GeneratorExit,
-    "Exception": Exception,
-    "StopIteration": StopIteration,
-    "StopAsyncIteration": Exception,
-    "ArithmeticError": ArithmeticError,
-    "FloatingPointError": FloatingPointError,
-    "OverflowError": OverflowError,
-    "ZeroDivisionError": ZeroDivisionError,
-    "AssertionError": AssertionError,
-    "AttributeError": AttributeError,
-    "BufferError": BufferError,
-    "EOFError": EOFError,
-    "ImportError": ImportError,
-    "LookupError": LookupError,
-    "IndexError": IndexError,
-    "KeyError": KeyError,
-    "MemoryError": MemoryError,
-    "NameError": NameError,
-    "UnboundLocalError": UnboundLocalError,
-    "OSError": OSError,
-    "BlockingIOError": BlockingIOError,
-    "ChildProcessError": ChildProcessError,
-    "ConnectionError": ConnectionError,
-    "BrokenPipeError": BrokenPipeError,
-    "ConnectionAbortedError": ConnectionAbortedError,
-    "ConnectionRefusedError": ConnectionRefusedError,
-    "ConnectionResetError": ConnectionResetError,
-    "FileExistsError": FileExistsError,
-    "FileNotFoundError": FileNotFoundError,
-    "InterruptedError": InterruptedError,
-    "IsADirectoryError": IsADirectoryError,
-    "NotADirectoryError": NotADirectoryError,
-    "PermissionError": PermissionError,
-    "ProcessLookupError": ProcessLookupError,
-    "TimeoutError": TimeoutError,
-    "ReferenceError": ReferenceError,
-    "RuntimeError": RuntimeError,
-    "NotImplementedError": NotImplementedError,
-    "RecursionError": Exception,
-    "SyntaxError": SyntaxError,
-    "IndentationError": IndentationError,
-    "TabError": TabError,
-    "SystemError": SystemError,
-    "TypeError": TypeError,
-    "ValueError": ValueError,
-    "UnicodeError": UnicodeError,
-    "UnicodeDecodeError": UnicodeDecodeError,
-    "UnicodeEncodeError": UnicodeEncodeError,
-    "UnicodeTranslateError": UnicodeTranslateError,
-    "Warning": Warning,
-    "DeprecationWarning": DeprecationWarning,
-    "PendingDeprecationWarning": PendingDeprecationWarning,
-    "RuntimeWarning": RuntimeWarning,
-    "SyntaxWarning": SyntaxWarning,
-    "UserWarning": UserWarning,
-    "FutureWarning": FutureWarning,
-    "ImportWarning": ImportWarning,
-    "UnicodeWarning": UnicodeWarning,
-    "BytesWarning": BytesWarning,
-    "ResourceWarning": ResourceWarning
-    """
-}
-
-if sys.version_info >= (3, 5):
-    _exceptions_lookup_dict["StopAsyncIteration"] = StopAsyncIteration
-    _exceptions_lookup_dict["RecursionError"] = RecursionError
-
 # classes
 class _microbit_connection:
     """
@@ -204,7 +131,7 @@ class _microbit_connection:
     """
     conn = None
 
-    def __init__(self, port=None):
+    def __init__(self, port=None, reraise_exceptions=False):
         """
         Constructor. Attempts to find the micro:bit, and raises an Exception
         if one can't be found. If one is found, but there is an error connecting
@@ -232,16 +159,24 @@ class _microbit_connection:
                     print("Log out, log back in, and see if that works.\n", file=sys.stderr)
                 else:
                     print("")
-                raise e
+                if reraise_exceptions:
+                    raise e
+                sys.exit(1)
             elif e.errno == 16:
                 # device busy
                 print("\nmicro:bit located, but it seems to be busy. This can happen if another program is attempting to communicate with it at the same time.", file=sys.stderr)
                 print("Wait up to 20 seconds, then try again. If that doesn't work, attempt a hard-reset of the device by pressing the reset button on the back of the board. If that doesn't work, then try a reboot.\n", file=sys.stderr)
-                raise e
+                if reraise_exceptions:
+                    raise e
+                sys.exit(1)
             else:
-                raise e
+                print("\nAn error occurred while trying to connect to the micro:bit:\n    %s" % (str(e)))
+                if reraise_exceptions:
+                    raise e
+                sys.exit(1)
         # perform a soft reset to make sure that we have a clean environment
-        self.execute("\x04")
+        self.execute("\x04", look_for_exceptions=False)
+        self.execute("")
         self.execute("\x03")
         self.post_reset()
 
@@ -259,9 +194,7 @@ class _microbit_connection:
                 # last line.
                 name = lines[-1].split(" ")[0][:-1]
                 msg = lines[-1][len(name)+2:]
-                if name in _exceptions_lookup_dict:
-                    raise _exceptions_lookup_dict[name](msg)
-                raise Exception("\n\n    the micro:bit threw the following exception:\n    [%s: %s]\n" % (name, msg))
+                raise Exception("\n\n    the micro:bit raised the following exception:\n    [%s: %s]\n" % (name, msg))
 
     def guess_port(self):
         """
@@ -294,7 +227,7 @@ class _microbit_connection:
         debug("Sending : " + str(data + "\r"))
         self.conn.write(str(data + "\r").encode())
 
-    def readlines(self, strip=True, decode=True):
+    def readlines(self, strip=True, decode=True, look_for_exceptions=True):
         """
         Continuously reads data from the serial connection until a ">>>" is
         encountered.
@@ -307,14 +240,15 @@ class _microbit_connection:
             if decode:
                 if strip:
                     dataStr = dataStr.replace(">>> ", "").strip()
-                    self.handle_potential_invalid_data(dataStr)
+                    if look_for_exceptions:
+                        self.handle_potential_invalid_data(dataStr)
                 return dataStr
             return data
         except UnicodeDecodeError:
             # Random data received, try again to read.
-            self.readlines(strip, decode)
+            self.readlines(strip, decode, look_for_exceptions)
 
-    def execute(self, command, strip=True, decode=True, timeout=1):
+    def execute(self, command, strip=True, decode=True, look_for_exceptions=True, timeout=1):
         """
         Executes the specified command, and returns the result. `strip`
         specifies whether to strip the whole of the output, or just the
@@ -322,7 +256,7 @@ class _microbit_connection:
         """
         self.conn.timeout = timeout
         self.write(command)
-        return self.readlines(strip, decode)
+        return self.readlines(strip, decode, look_for_exceptions)
 
     def post_reset(self):
         """
@@ -525,7 +459,7 @@ class _microbit_display:
             self._ubit_conn.execute( "microbit.display.show(\"%s\",%d,wait=%s,loop=%s,clear=%s)" % \
                 (iterable, delay, wait, loop, clear))
         else:
-            raise Exception("Invalid datatype being requested to be shown, only type Image or String (str) allowed!")
+            raise Exception("Invalid datatype being requested to be shown, only microbit.Image or str (string) allowed!")
 
     def scroll(self, string, delay=400):
         self._ubit_conn.execute("microbit.display.scroll(\"%s\",%d)" % (string, delay), timeout=None)
