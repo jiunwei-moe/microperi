@@ -3,26 +3,25 @@
 #
 # See LICENSE file for copyright and license details
 
-# MicroPeri is a library for using the BBC Microbit with MicroPython as an
-# external peripheral device or sensor.
+# MicroPeri is a library for using the BBC micro:bit with MicroPython as an
+# external peripheral device or sensor, using an API which closely replicates
+# the micro:bit's MicroPython API.
 
 import sys
-import os
 
 if __name__ == "__main__":
     # this shouldn't be run as a file
-    name = os.path.basename(__file__)
-    if name[-3:] == ".py":
-        name = name[:-3]
-    print("Use me as a module:\n    from %s import microbit" % (name))
+    print("Use me as a module:\n    from microperi import Microbit" % (name))
     sys.exit(1)
 
-os.sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import os
+os.sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import serial
+import microperi.utils
 
 from logging import debug, info, warning, basicConfig, INFO, DEBUG, WARNING
 
-basicConfig(level=WARNING)
+basicConfig(level=DEBUG)
 
 # the microbit DAL's pentolino font character map lookup dict
 _microbit_font_pendolino3 = {
@@ -138,17 +137,13 @@ class _microbit_connection:
         to it, depending on the error (and platform), microperi may output a
         message to stderr, and then raise an exception.
         """
-        if port is None or not isinstance(port, str):
+        if not isinstance(port, str):
             port = self.guess_port()
             if port is None:
                 raise Exception("Could not find micro:bit!")
         try:
             self.conn = serial.Serial(port, 115200, timeout=1)
         except serial.SerialException as e:
-            # NOTE: we could simple exit here instead of raising the exception
-            # again, but the underlying script using this module might have
-            # something to do (however the exception tracebacks are very large,
-            # and the message probably won't be seen).
             if e.errno == 13:
                 # possible invalid priviledges for the current user?
                 print("\nmicro:bit located, but permission to connect to it was denied.", file=sys.stderr)
@@ -156,7 +151,7 @@ class _microbit_connection:
                     import pwd
                     print("Perhaps your user account does not have sufficient privileges to open the serial connection? Try running the command:", file=sys.stderr)
                     print("    sudo usermod -a -G dialout %s" % (pwd.getpwuid(os.getuid()).pw_name), file=sys.stderr)
-                    print("Log out, log back in, and see if that works.\n", file=sys.stderr)
+                    print("Then log out, log back in, and see if that works.\n", file=sys.stderr)
                 else:
                     print("")
                 if reraise_exceptions:
@@ -174,10 +169,11 @@ class _microbit_connection:
                 if reraise_exceptions:
                     raise e
                 sys.exit(1)
+        info("Connected to micro:bit, port: %s" % (self.conn.port))
         # perform a soft reset to make sure that we have a clean environment
-        self.execute("\x04", look_for_exceptions=False)
+        self.execute("\x04", look_for_exceptions=False) # ctrl+c (KeyboardInterrupt)
         self.execute("")
-        self.execute("\x03")
+        self.execute("\x03") # ctrl+d (EOF; soft reset)
         self.post_reset()
 
     def handle_potential_invalid_data(self, data):
@@ -189,7 +185,7 @@ class _microbit_connection:
         if len(lines) <= 0:
             return
         for x in range(len(lines) - 1):
-            if lines[x][:9] == "Traceback":
+            if lines[x].startswith("Traceback"):
                 # look for the exception raised. this is going to be on the very
                 # last line.
                 name = lines[-1].split(" ")[0][:-1]
@@ -198,26 +194,13 @@ class _microbit_connection:
 
     def guess_port(self):
         """
-        From https://github.com/ntoll/microrepl
-        Returns the port for the first micro:bit found connected to the computer
-        running this script. If no micro:bit is found, returns None.
+        Returns the address of the first available connected micro:bit, or None
+        if none were found.
         """
-        from serial.tools.list_ports import comports as list_serial_ports
-        ports = list_serial_ports()
-        platform = sys.platform
-        if platform.startswith("linux"):
-            for port in ports:
-                if "VID:PID=0D28:0204" in port[2].upper():
-                    return port[0]
-        elif platform.startswith("darwin"):
-            for port in ports:
-                if "VID:PID=0D28:0204" in port[2].upper():
-                    return port[0]
-        elif platform.startswith("win"):
-            for port in ports:
-                if "VID:PID=0D28:0204" in port[2].upper():
-                    return port[0]
-        return None
+        devices = microperi.utils.connected_microbits()
+        if len(devices) <= 0:
+            return None
+        return devices[0]
 
     def write(self, data):
         """
@@ -227,13 +210,15 @@ class _microbit_connection:
         debug("Sending : " + str(data + "\r"))
         self.conn.write(str(data + "\r").encode())
 
-    def readlines(self, strip=True, decode=True, look_for_exceptions=True):
+    def readlines(self, strip=True, decode=True, look_for_exceptions=True, flush_after_input=True):
         """
         Continuously reads data from the serial connection until a ">>>" is
         encountered.
         """
         debug("Received : " + str(self.conn.readline()))
         data = self.conn.read_until(b">>> ")
+        if flush_after_input:
+            self.flush_input()
         try:
             dataStr = data.decode()
             debug("Received : " + str(dataStr))
@@ -248,15 +233,18 @@ class _microbit_connection:
             # Random data received, try again to read.
             self.readlines(strip, decode, look_for_exceptions)
 
-    def execute(self, command, strip=True, decode=True, look_for_exceptions=True, timeout=1):
+    def execute(self, command, strip=True, decode=True, look_for_exceptions=True, timeout=None):
         """
         Executes the specified command, and returns the result. `strip`
         specifies whether to strip the whole of the output, or just the
         carriage return at the very end.
         """
-        self.conn.timeout = timeout
+        if timeout is not None:
+            self.conn.timeout = timeout
         self.write(command)
-        return self.readlines(strip, decode, look_for_exceptions)
+        data = self.readlines(strip, decode, look_for_exceptions)
+        self.conn.write(b"\r")
+        return data
 
     def post_reset(self):
         """
@@ -266,16 +254,20 @@ class _microbit_connection:
         """
         self.execute("")
         self.execute("import microbit")
+        self.flush_input()
+
+    def flush_input(self):
+        """
+        Routine to manually flush the serial input buffer.
+        """
+        n = self.conn.inWaiting()
+        while n > 0:
+            self.conn.read(n)
+            n = self.conn.inWaiting()
 
 class _microbit_image_class:
     """
-    Class representing the microbit.Image class. Currently incomplete.
-
-    >>> str(microbit.Image.SNAKE)
-    "Image(\n    '99000:'\n    '99099:'\n    '09090:'\n    '09990:'\n    '00000:'\n)"
-    >>> repr(microbit.Image.SNAKE)
-    "Image('99000:99099:09090:09990:00000:')"
-
+    Class representing the microbit.Image class.
     """
     _img_array_buffer = None
     _img_width = None
@@ -297,7 +289,7 @@ class _microbit_image_class:
         return "Image('%s')" % (s)
 
     def __init__(self, string=None, width=None, height=None, buffer=None,
-                 _microrepl_isreadonly=False):
+                 _is_readonly=False):
         if string is not None:
             self._is_string = True
             if isinstance(string, _microbit_image_class):
@@ -328,7 +320,7 @@ class _microbit_image_class:
                 self._img_array_buffer = image_data
             else:
                 self._img_array_buffer = _microbit_font_pendolino3[0]
-        _is_readonly = _microrepl_isreadonly
+        _is_readonly = _is_readonly
 
     def _img_from_string(self, string):
         rows = string.split(":")
@@ -441,6 +433,7 @@ class _microbit_display:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def set_pixel(self, x, y, value):
@@ -475,7 +468,7 @@ class _microbit_uart:
     as there is only one hardware serial chip which cannot be shared.
     """
     def _unimplemented(self):
-        raise Exception("The microbit.uart module is not implemented, as it will render this module useless")
+        raise ("The microbit.uart module is not implemented, as it will render this module useless")
 
     def init(self, baudrate=9600, bits=8, parity=None, stop=1, tx=None, rx=None):
         self._unimplemented()
@@ -589,6 +582,7 @@ class _microbit_accelerometer:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def get_y(self):
@@ -596,6 +590,7 @@ class _microbit_accelerometer:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def get_z(self):
@@ -603,6 +598,7 @@ class _microbit_accelerometer:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def get_values(self):
@@ -620,6 +616,7 @@ class _microbit_accelerometer:
         elif s == "False":
             return False
         else:
+            warning("Expected \"True\" or \"False\"; got \"%s\"" % (s))
             return None
 
     def was_gesture(self, name):
@@ -630,6 +627,7 @@ class _microbit_accelerometer:
         elif s == "False":
             return False
         else:
+            warning("Expected \"True\" or \"False\"; got \"%s\"" % (s))
             return None
 
     def get_gestures(self):
@@ -660,6 +658,7 @@ class _microbit_compass:
         elif s == "False":
             return False
         else:
+            warning("Expected \"True\" or \"False\"; got \"%s\"" % (s))
             return None
 
     def clear_calibration(self):
@@ -671,6 +670,7 @@ class _microbit_compass:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def get_y(self):
@@ -678,6 +678,7 @@ class _microbit_compass:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def get_z(self):
@@ -685,6 +686,7 @@ class _microbit_compass:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def heading(self):
@@ -692,12 +694,14 @@ class _microbit_compass:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def get_field_strength(self):
         s = self._ubit_conn.execute("microbit.compass.get_field_strength()", timeout=None)
         try:
             return int(s)
+            warning("Expected integer; got \"%s\"" % (s))
         except:
             return None
 
@@ -708,9 +712,9 @@ class _microbit_pin:
     """
     _pin_name = None
 
-class _microbit:
+class Microbit:
     """
-    Main class, which represents the microibt module. Everything goes in here.
+    Main class, which represents the microbit module. Everything goes in here.
     """
     _ubit_conn = None
 
@@ -758,69 +762,69 @@ class _microbit:
     # microbit module classes
     class Image(_microbit_image_class):
         # constants (these are all readonly images)
-        HEART           = _microbit_image_class("09090:99999:99999:09990:00900", _microrepl_isreadonly=True)
-        HEART_SMALL     = _microbit_image_class("00000:09090:09990:00900:00000", _microrepl_isreadonly=True)
-        HAPPY           = _microbit_image_class("00000:09090:00000:90009:09990", _microrepl_isreadonly=True)
-        SMILE           = _microbit_image_class("00000:00000:00000:90009:09990", _microrepl_isreadonly=True)
-        SAD             = _microbit_image_class("00000:09090:00000:09990:90009", _microrepl_isreadonly=True)
-        CONFUSED        = _microbit_image_class("00000:09090:00000:09090:90909", _microrepl_isreadonly=True)
-        ANGRY           = _microbit_image_class("90009:09090:00000:99999:90909", _microrepl_isreadonly=True)
-        ASLEEP          = _microbit_image_class("00000:99099:00000:09990:00000", _microrepl_isreadonly=True)
-        SURPRISED       = _microbit_image_class("09090:00000:00900:09090:00900", _microrepl_isreadonly=True)
-        SILLY           = _microbit_image_class("90009:00000:99999:00909:00999", _microrepl_isreadonly=True)
-        FABULOUS        = _microbit_image_class("99999:99099:00000:09090:09990", _microrepl_isreadonly=True)
-        MEH             = _microbit_image_class("09090:00000:00090:00900:09000", _microrepl_isreadonly=True)
-        YES             = _microbit_image_class("00000:00009:00090:90900:09000", _microrepl_isreadonly=True)
-        NO              = _microbit_image_class("90009:09090:00900:09090:90009", _microrepl_isreadonly=True)
-        CLOCK12         = _microbit_image_class("00900:00900:00900:00000:00000", _microrepl_isreadonly=True)
-        CLOCK1          = _microbit_image_class("00090:00090:00900:00000:00000", _microrepl_isreadonly=True)
-        CLOCK2          = _microbit_image_class("00000:00099:00900:00000:00000", _microrepl_isreadonly=True)
-        CLOCK3          = _microbit_image_class("00000:00000:00999:00000:00000", _microrepl_isreadonly=True)
-        CLOCK4          = _microbit_image_class("00000:00000:00900:00099:00000", _microrepl_isreadonly=True)
-        CLOCK5          = _microbit_image_class("00000:00000:00900:00090:00090", _microrepl_isreadonly=True)
-        CLOCK6          = _microbit_image_class("00000:00000:00900:00900:00900", _microrepl_isreadonly=True)
-        CLOCK7          = _microbit_image_class("00000:00000:00900:09000:09000", _microrepl_isreadonly=True)
-        CLOCK8          = _microbit_image_class("00000:00000:00900:99000:00000", _microrepl_isreadonly=True)
-        CLOCK9          = _microbit_image_class("00000:00000:99900:00000:00000", _microrepl_isreadonly=True)
-        CLOCK10         = _microbit_image_class("00000:99000:00900:00000:00000", _microrepl_isreadonly=True)
-        CLOCK11         = _microbit_image_class("09000:09000:00900:00000:00000", _microrepl_isreadonly=True)
-        ARROW_N         = _microbit_image_class("00900:09990:90909:00900:00900", _microrepl_isreadonly=True)
-        ARROW_NE        = _microbit_image_class("00999:00099:00909:09000:90000", _microrepl_isreadonly=True)
-        ARROW_E         = _microbit_image_class("00900:00090:99999:00090:00900", _microrepl_isreadonly=True)
-        ARROW_SE        = _microbit_image_class("90000:09000:00909:00099:00999", _microrepl_isreadonly=True)
-        ARROW_S         = _microbit_image_class("00900:00900:90909:09990:00900", _microrepl_isreadonly=True)
-        ARROW_SW        = _microbit_image_class("00009:00090:90900:99000:99900", _microrepl_isreadonly=True)
-        ARROW_W         = _microbit_image_class("00900:09000:99999:09000:00900", _microrepl_isreadonly=True)
-        ARROW_NW        = _microbit_image_class("99900:99000:90900:00090:00009", _microrepl_isreadonly=True)
-        TRIANGLE        = _microbit_image_class("00000:00900:09090:99999:00000", _microrepl_isreadonly=True)
-        TRIANGLE_LEFT   = _microbit_image_class("90000:99000:90900:90090:99999", _microrepl_isreadonly=True)
-        CHESSBOARD      = _microbit_image_class("09090:90909:09090:90909:09090", _microrepl_isreadonly=True)
-        DIAMOND         = _microbit_image_class("00900:09090:90009:09090:00900", _microrepl_isreadonly=True)
-        DIAMOND_SMALL   = _microbit_image_class("00000:00900:09090:00900:00000", _microrepl_isreadonly=True)
-        SQUARE          = _microbit_image_class("99999:90009:90009:90009:99999", _microrepl_isreadonly=True)
-        SQUARE_SMALL    = _microbit_image_class("00000:09990:09090:09990:00000", _microrepl_isreadonly=True)
-        RABBIT          = _microbit_image_class("90900:90900:99990:99090:99990", _microrepl_isreadonly=True)
-        COW             = _microbit_image_class("90009:90009:99999:09990:00900", _microrepl_isreadonly=True)
-        MUSIC_CROTCHET  = _microbit_image_class("00900:00900:00900:99900:99900", _microrepl_isreadonly=True)
-        MUSIC_QUAVER    = _microbit_image_class("00900:00990:00909:99900:99900", _microrepl_isreadonly=True)
-        MUSIC_QUAVERS   = _microbit_image_class("09999:09009:09009:99099:99099", _microrepl_isreadonly=True)
-        PITCHFORK       = _microbit_image_class("90909:90909:99999:00900:00900", _microrepl_isreadonly=True)
-        XMAS            = _microbit_image_class("00900:09990:00900:09990:99999", _microrepl_isreadonly=True)
-        PACMAN          = _microbit_image_class("09999:99090:99900:99990:09999", _microrepl_isreadonly=True)
-        TARGET          = _microbit_image_class("00900:09990:99099:09990:00900", _microrepl_isreadonly=True)
-        TSHIRT          = _microbit_image_class("99099:99999:09990:09990:09990", _microrepl_isreadonly=True)
-        ROLLERSKATE     = _microbit_image_class("00099:00099:99999:99999:09090", _microrepl_isreadonly=True)
-        DUCK            = _microbit_image_class("09900:99900:09999:09990:00000", _microrepl_isreadonly=True)
-        HOUSE           = _microbit_image_class("00900:09990:99999:09990:09090", _microrepl_isreadonly=True)
-        TORTOISE        = _microbit_image_class("00000:09990:99999:09090:00000", _microrepl_isreadonly=True)
-        BUTTERFLY       = _microbit_image_class("99099:99999:00900:99999:99099", _microrepl_isreadonly=True)
-        STICKFIGURE     = _microbit_image_class("00900:99999:00900:09090:90009", _microrepl_isreadonly=True)
-        GHOST           = _microbit_image_class("99999:90909:99999:99999:90909", _microrepl_isreadonly=True)
-        SWORD           = _microbit_image_class("00900:00900:00900:09990:00900", _microrepl_isreadonly=True)
-        GIRAFFE         = _microbit_image_class("99000:09000:09000:09990:09090", _microrepl_isreadonly=True)
-        SKULL           = _microbit_image_class("09990:90909:99999:09990:09990", _microrepl_isreadonly=True)
-        UMBRELLA        = _microbit_image_class("09990:99999:00900:90900:09900", _microrepl_isreadonly=True)
-        SNAKE           = _microbit_image_class("99000:99099:09090:09990:00000", _microrepl_isreadonly=True)
+        HEART           = _microbit_image_class("09090:99999:99999:09990:00900", _is_readonly=True)
+        HEART_SMALL     = _microbit_image_class("00000:09090:09990:00900:00000", _is_readonly=True)
+        HAPPY           = _microbit_image_class("00000:09090:00000:90009:09990", _is_readonly=True)
+        SMILE           = _microbit_image_class("00000:00000:00000:90009:09990", _is_readonly=True)
+        SAD             = _microbit_image_class("00000:09090:00000:09990:90009", _is_readonly=True)
+        CONFUSED        = _microbit_image_class("00000:09090:00000:09090:90909", _is_readonly=True)
+        ANGRY           = _microbit_image_class("90009:09090:00000:99999:90909", _is_readonly=True)
+        ASLEEP          = _microbit_image_class("00000:99099:00000:09990:00000", _is_readonly=True)
+        SURPRISED       = _microbit_image_class("09090:00000:00900:09090:00900", _is_readonly=True)
+        SILLY           = _microbit_image_class("90009:00000:99999:00909:00999", _is_readonly=True)
+        FABULOUS        = _microbit_image_class("99999:99099:00000:09090:09990", _is_readonly=True)
+        MEH             = _microbit_image_class("09090:00000:00090:00900:09000", _is_readonly=True)
+        YES             = _microbit_image_class("00000:00009:00090:90900:09000", _is_readonly=True)
+        NO              = _microbit_image_class("90009:09090:00900:09090:90009", _is_readonly=True)
+        CLOCK12         = _microbit_image_class("00900:00900:00900:00000:00000", _is_readonly=True)
+        CLOCK1          = _microbit_image_class("00090:00090:00900:00000:00000", _is_readonly=True)
+        CLOCK2          = _microbit_image_class("00000:00099:00900:00000:00000", _is_readonly=True)
+        CLOCK3          = _microbit_image_class("00000:00000:00999:00000:00000", _is_readonly=True)
+        CLOCK4          = _microbit_image_class("00000:00000:00900:00099:00000", _is_readonly=True)
+        CLOCK5          = _microbit_image_class("00000:00000:00900:00090:00090", _is_readonly=True)
+        CLOCK6          = _microbit_image_class("00000:00000:00900:00900:00900", _is_readonly=True)
+        CLOCK7          = _microbit_image_class("00000:00000:00900:09000:09000", _is_readonly=True)
+        CLOCK8          = _microbit_image_class("00000:00000:00900:99000:00000", _is_readonly=True)
+        CLOCK9          = _microbit_image_class("00000:00000:99900:00000:00000", _is_readonly=True)
+        CLOCK10         = _microbit_image_class("00000:99000:00900:00000:00000", _is_readonly=True)
+        CLOCK11         = _microbit_image_class("09000:09000:00900:00000:00000", _is_readonly=True)
+        ARROW_N         = _microbit_image_class("00900:09990:90909:00900:00900", _is_readonly=True)
+        ARROW_NE        = _microbit_image_class("00999:00099:00909:09000:90000", _is_readonly=True)
+        ARROW_E         = _microbit_image_class("00900:00090:99999:00090:00900", _is_readonly=True)
+        ARROW_SE        = _microbit_image_class("90000:09000:00909:00099:00999", _is_readonly=True)
+        ARROW_S         = _microbit_image_class("00900:00900:90909:09990:00900", _is_readonly=True)
+        ARROW_SW        = _microbit_image_class("00009:00090:90900:99000:99900", _is_readonly=True)
+        ARROW_W         = _microbit_image_class("00900:09000:99999:09000:00900", _is_readonly=True)
+        ARROW_NW        = _microbit_image_class("99900:99000:90900:00090:00009", _is_readonly=True)
+        TRIANGLE        = _microbit_image_class("00000:00900:09090:99999:00000", _is_readonly=True)
+        TRIANGLE_LEFT   = _microbit_image_class("90000:99000:90900:90090:99999", _is_readonly=True)
+        CHESSBOARD      = _microbit_image_class("09090:90909:09090:90909:09090", _is_readonly=True)
+        DIAMOND         = _microbit_image_class("00900:09090:90009:09090:00900", _is_readonly=True)
+        DIAMOND_SMALL   = _microbit_image_class("00000:00900:09090:00900:00000", _is_readonly=True)
+        SQUARE          = _microbit_image_class("99999:90009:90009:90009:99999", _is_readonly=True)
+        SQUARE_SMALL    = _microbit_image_class("00000:09990:09090:09990:00000", _is_readonly=True)
+        RABBIT          = _microbit_image_class("90900:90900:99990:99090:99990", _is_readonly=True)
+        COW             = _microbit_image_class("90009:90009:99999:09990:00900", _is_readonly=True)
+        MUSIC_CROTCHET  = _microbit_image_class("00900:00900:00900:99900:99900", _is_readonly=True)
+        MUSIC_QUAVER    = _microbit_image_class("00900:00990:00909:99900:99900", _is_readonly=True)
+        MUSIC_QUAVERS   = _microbit_image_class("09999:09009:09009:99099:99099", _is_readonly=True)
+        PITCHFORK       = _microbit_image_class("90909:90909:99999:00900:00900", _is_readonly=True)
+        XMAS            = _microbit_image_class("00900:09990:00900:09990:99999", _is_readonly=True)
+        PACMAN          = _microbit_image_class("09999:99090:99900:99990:09999", _is_readonly=True)
+        TARGET          = _microbit_image_class("00900:09990:99099:09990:00900", _is_readonly=True)
+        TSHIRT          = _microbit_image_class("99099:99999:09990:09990:09990", _is_readonly=True)
+        ROLLERSKATE     = _microbit_image_class("00099:00099:99999:99999:09090", _is_readonly=True)
+        DUCK            = _microbit_image_class("09900:99900:09999:09990:00000", _is_readonly=True)
+        HOUSE           = _microbit_image_class("00900:09990:99999:09990:09090", _is_readonly=True)
+        TORTOISE        = _microbit_image_class("00000:09990:99999:09090:00000", _is_readonly=True)
+        BUTTERFLY       = _microbit_image_class("99099:99999:00900:99999:99099", _is_readonly=True)
+        STICKFIGURE     = _microbit_image_class("00900:99999:00900:09090:90009", _is_readonly=True)
+        GHOST           = _microbit_image_class("99999:90909:99999:99999:90909", _is_readonly=True)
+        SWORD           = _microbit_image_class("00900:00900:00900:09990:00900", _is_readonly=True)
+        GIRAFFE         = _microbit_image_class("99000:09000:09000:09990:09090", _is_readonly=True)
+        SKULL           = _microbit_image_class("09990:90909:99999:09990:09990", _is_readonly=True)
+        UMBRELLA        = _microbit_image_class("09990:99999:00900:90900:09900", _is_readonly=True)
+        SNAKE           = _microbit_image_class("99000:99099:09090:09990:00000", _is_readonly=True)
 
     class Button:
         """
@@ -834,9 +838,6 @@ class _microbit:
             self._ubit_conn = conn
             self._button_name = name
 
-        def __str__(self):
-            return
-
         def is_pressed(self):
             s = self._ubit_conn.execute("microbit.%s.is_pressed()" % (self._button_name))
             if s == "True":
@@ -844,6 +845,7 @@ class _microbit:
             elif s == "False":
                 return False
             else:
+                warning("Expected \"True\" or \"False\"; got \"%s\"" % (s))
                 return None
 
         def was_pressed(self):
@@ -853,6 +855,7 @@ class _microbit:
             elif s == "False":
                 return False
             else:
+                warning("Expected \"True\" or \"False\"; got \"%s\"" % (s))
                 return None
 
         def get_presses(self):
@@ -860,6 +863,7 @@ class _microbit:
             try:
                 return int(s)
             except:
+                warning("Expected integer; got \"%s\"" % (s))
                 return None
 
     class MicroBitDigitalPin(_microbit_pin):
@@ -878,6 +882,7 @@ class _microbit:
             try:
                 return int(s)
             except:
+                warning("Expected integer; got \"%s\"" % (s))
                 return None
 
         def write_digital(self, value):
@@ -899,6 +904,7 @@ class _microbit:
             try:
                 return int(s)
             except:
+                warning("Expected integer; got \"%s\"" % (s))
                 return None
 
         def write_analog(self, value):
@@ -931,6 +937,8 @@ class _microbit:
             elif s == "False":
                 return False
             else:
+                warning("Expected integer; got \"%s\"" % (s))
+                warning("Expected \"True\" or \"False\"; got \"%s\"" % (s))
                 return None
 
     # functions
@@ -973,8 +981,6 @@ class _microbit:
         self.accelerometer = _microbit_accelerometer(self._ubit_conn)
         self.compass = _microbit_compass(self._ubit_conn)
 
-        self.reset()
-
     def panic(self, n):
         self._ubit_conn.execute("microbit.panic(%d)" % (n))
         self._ubit_conn.post_reset()
@@ -995,6 +1001,7 @@ class _microbit:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
     def temperature(self):
@@ -1002,6 +1009,8 @@ class _microbit:
         try:
             return int(s)
         except:
+            warning("Expected integer; got \"%s\"" % (s))
             return None
 
-Microbit = _microbit
+    def identify(self):
+        return microperi.utils.identify_microbit(self)

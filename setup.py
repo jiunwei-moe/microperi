@@ -1,19 +1,22 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from setuptools import setup
 
 with open('README.rst') as f:
     readme = f.read()
 
+with open('AUTHORS') as f:
+    authors = f.read().strip().replace('\n', ', ')
+
 setup(
     name='MicroPeri',
-    version='0.1',
-    description='MicroPeri is quick and easy to use Python 3 library for turning the BBC Microbit into an external peripheral device or sensor.',
+    version='0.1.0',
+    description='MicroPeri is a library for using the BBC micro:bit with MicroPython as an external peripheral device or sensor, using an API which closely replicates the micro:bit\'s MicroPython API.',
     long_description=readme,
-    author='Andrew Mulholland, Joe Glancy',
+    author=authors,
     author_email='',
     url='https://github.com/JoeGlancy/microperi',
     scripts = [],
     license='mit',
-    install_requires=['pyserial', ],
+    install_requires=[],
     package_data={'': ['README.rst',]},
 )
