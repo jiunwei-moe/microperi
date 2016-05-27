@@ -241,6 +241,7 @@ class _microbit_connection:
         """
         if timeout is not None:
             self.conn.timeout = timeout
+        self.flush_input()
         self.write(command)
         data = self.readlines(strip, decode, look_for_exceptions)
         self.conn.write(b"\r")
@@ -712,10 +713,7 @@ class _microbit_pin:
     """
     _pin_name = None
 
-class Microbit:
-    """
-    Main class, which represents the microbit module. Everything goes in here.
-    """
+class _microbit_module:
     _ubit_conn = None
 
     # buttons
@@ -943,8 +941,8 @@ class Microbit:
 
     # functions
     # constructor
-    def __init__(self, port_addr=None):
-        self._ubit_conn = _microbit_connection(port_addr)
+    def __init__(self, conn):
+        self._ubit_conn = conn
 
         self.button_a = self.Button(self._ubit_conn, "button_a")
         self.button_b = self.Button(self._ubit_conn, "button_b")
@@ -1011,6 +1009,19 @@ class Microbit:
         except:
             warning("Expected integer; got \"%s\"" % (s))
             return None
+
+class Microbit:
+    """
+    Main class. Everything goes in here.
+    """
+    _ubit_conn = None
+
+    # micro:bit modules
+    microbit = None
+
+    def __init__(self, port_addr=None):
+        self._ubit_conn = _microbit_connection(port_addr)
+        self.microbit = _microbit_module(self._ubit_conn)
 
     def identify(self):
         return microperi.utils.identify_microbit(self)
