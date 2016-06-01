@@ -28,7 +28,8 @@ Usage
 
     import microperi
     # try to find the micro:bit automatically
-    microbit = microperi.Microbit()
+    device = microperi.Microbit()
+    microbit = device.microbit
     microbit.display.scroll("Hello world")
     while True:
         # is button A currently being pressed?

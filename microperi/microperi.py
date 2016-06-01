@@ -233,7 +233,7 @@ class _microbit_connection:
             # Random data received, try again to read.
             self.readlines(strip, decode, look_for_exceptions)
 
-    def execute(self, command, strip=True, decode=True, look_for_exceptions=True, timeout=None):
+    def execute(self, command, strip=True, decode=True, look_for_exceptions=True, timeout=None, flush_after_input=True):
         """
         Executes the specified command, and returns the result. `strip`
         specifies whether to strip the whole of the output, or just the
@@ -243,8 +243,7 @@ class _microbit_connection:
             self.conn.timeout = timeout
         self.flush_input()
         self.write(command)
-        data = self.readlines(strip, decode, look_for_exceptions)
-        self.conn.write(b"\r")
+        data = self.readlines(strip, decode, look_for_exceptions, flush_after_input)
         return data
 
     def post_reset(self):
