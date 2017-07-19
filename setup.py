@@ -15,8 +15,8 @@ setup(
     author=authors,
     author_email='',
     url='https://github.com/JoeGlancy/microperi',
-    scripts = [],
+    scripts=[],
     license='mit',
     install_requires=[],
-    package_data={'': ['README.rst',]},
+    package_data={'': ['README.rst', ]},
 )

@@ -15,7 +15,7 @@ from serial.tools.list_ports import comports as list_serial_ports
 from serial import Serial
 
 
-__all__ = ['microbit']
+__all__ = ['device']
 
 
 def find_microbit():
@@ -49,9 +49,6 @@ def get_connection():
     serial.write(b'\x01')  # Go into raw mode.
     time.sleep(0.1)
     serial.read_until(b'\r\n>OK')  # Flush buffer until raw mode prompt.
-    time.sleep(0.1)
-    serial.write('import microbit'.encode('utf-8') + b'\x04')
-    serial.read_until(b'\x04>')  # Flush buffer until prompt.
     time.sleep(0.1)
     return serial
 
@@ -89,6 +86,21 @@ def execute(command, serial):
     return out, err
 
 
+def repr_args(args, kwargs):
+    # Positional args
+    clean_args = []
+    for arg in args:
+        if isinstance(arg, Shim):
+            clean_args.append(arg.name)
+        else:
+            clean_args.append(repr(arg))
+    # Named args
+    clean_kwargs = []
+    for k, v in kwargs.items():
+        clean_kwargs.append('{}={}'.format(k, repr(v)))
+    return ', '.join(clean_args + clean_kwargs)
+
+
 class Shim:
     """
     A class that is a shim and makes child shims.
@@ -103,35 +115,8 @@ class Shim:
         self.name = name
         self.connection = connection
 
-    def open(self):
-        if self.connection is None:
-            self.connection = get_connection()
-        if not self.connection.is_open:
-            self.connection = get_connection()
-
-    def close(self):
-        close_connection(self.connection)
-
     def __call__(self, *args, **kwargs):
-        # Positional args
-        clean_args = []
-        for arg in args:
-            if isinstance(arg, str):
-                clean_args.append('"{}"'.format(arg))
-            elif isinstance(arg, Shim):
-                clean_args.append(arg.name)
-            else:
-                clean_args.append(str(arg))
-        arg_string = ', '.join(clean_args)
-        # Named args
-        clean_kwargs = []
-        for k, v in kwargs.items():
-            if isinstance(v, str):
-                clean_kwargs.append('{}="{}"'.format(k, v))
-            else:
-                clean_kwargs.append('{}={}'.format(k, v))
-        kwarg_string = ', '.join(clean_kwargs)
-        complete_args = ', '.join([arg_string, kwarg_string])
+        complete_args = repr_args(args, kwargs)
         command = "print({}({}))".format(self.name, complete_args)
         print(command)
         out, err = execute(command, self.connection)
@@ -142,11 +127,41 @@ class Shim:
     def __getattr__(self, attr_name):
         return Shim('{}.{}'.format(self.name, attr_name), self.connection)
 
+
+class Device:
+    """
+    Represents a micro:bit device.
+    """
+
+    def __init__(self, connection=None):
+        self.connection = connection
+        self.modules = {}
+
+    def open(self):
+        if self.connection is None:
+            self.connection = get_connection()
+        if not self.connection.is_open:
+            self.connection = get_connection()
+
+    def close(self):
+        close_connection(self.connection)
+
+    def __getattr__(self, attr_name):
+        if attr_name in self.modules:
+            return self.modules[attr_name]
+        # Using module for the first time, so try to import it
+        _, err = execute('import ' + attr_name, self.connection)
+        if err:
+            raise IOError(err)
+        shim = Shim(attr_name, self.connection)
+        self.modules[attr_name] = shim
+        return shim
+
     def __enter__(self):
         self.open()
 
-    def __exit__(self):
+    def __exit__(self, type, value, traceback):
         self.close()
 
 
-microbit = Shim('microbit')
+device = Device()
