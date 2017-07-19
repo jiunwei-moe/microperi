@@ -69,7 +69,7 @@ def close_connection(serial):
         serial.close()
 
 
-def execute(command, serial):
+def execute(command, serial, delay=0.1):
     """
     Sends the command using the serial connection to a micro:bit and returns
     the result.
@@ -80,24 +80,27 @@ def execute(command, serial):
     serial.write(command.encode('utf-8') + b'\x04')
     result = bytearray()
     while not result.endswith(b'\x04>'):  # Read until prompt.
-        time.sleep(0.1)
+        time.sleep(delay)
         result.extend(serial.read_all())
     out, err = result[2:-2].split(b'\x04', 1)  # Split stdout, stderr
     return out, err
 
 
 def repr_args(args, kwargs):
+    """
+    Returns a comma-separated str of the received arguments.
+
+    Note that keyword arguments that start with an underscore are filtered out.
+    """
     # Positional args
     clean_args = []
     for arg in args:
-        if isinstance(arg, Shim):
-            clean_args.append(arg.name)
-        else:
-            clean_args.append(repr(arg))
+        clean_args.append(repr(arg))
     # Named args
     clean_kwargs = []
     for k, v in kwargs.items():
-        clean_kwargs.append('{}={}'.format(k, repr(v)))
+        if not k.startswith('_'):
+            clean_kwargs.append('{}={}'.format(k, repr(v)))
     return ', '.join(clean_args + clean_kwargs)
 
 
@@ -117,15 +120,18 @@ class Shim:
 
     def __call__(self, *args, **kwargs):
         complete_args = repr_args(args, kwargs)
-        command = "print({}({}))".format(self.name, complete_args)
-        print(command)
-        out, err = execute(command, self.connection)
+        command = "print(repr({}({})))".format(self.name, complete_args)
+        underscore_args = {k[1:]: v for k, v in kwargs.items() if k[0] == '_'}
+        out, err = execute(command, self.connection, **underscore_args)
         if err:
             raise IOError(err)
         return ast.literal_eval(out.decode('utf-8'))
 
     def __getattr__(self, attr_name):
         return Shim('{}.{}'.format(self.name, attr_name), self.connection)
+
+    def __repr__(self):
+        return self.name
 
 
 class Device:

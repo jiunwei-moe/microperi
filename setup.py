@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open('README.rst') as f:
     readme = f.read()
@@ -18,5 +18,6 @@ setup(
     scripts=[],
     license='mit',
     install_requires=[],
+    packages=find_packages(),
     package_data={'': ['README.rst', ]},
 )
